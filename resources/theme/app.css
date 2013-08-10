@@ -1,0 +1,6 @@
+@import url('../../ext/resources/css/ext-all.css');
+/*@import url('../../ext/resources/css/ext-all-neptune.css');*/
+
+.sell-col {
+	background-image: url(../images/delete.gif);
+}
