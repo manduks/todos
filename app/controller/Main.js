@@ -1,108 +1,127 @@
 Ext.define('Todos.controller.Main', {
     extend: 'Ext.app.Controller',
-    refs: [{
-        ref: 'loginform',
-        selector: 'loginform'
-    }, {
-        ref: 'main',
-        selector: 'viewport'
+    refs:[{
+    	ref:'loginForm',
+    	selector:'login-form'
+    },{
+    	ref:'main',
+    	selector:'app-main'
     }],
-    listTodosUndones:true,
-    init: function () {
-        this.control({
-            'loginform': {
-                loginuser: this.onLoginUser
+    appiURL: 'http://api.codetlan.com/api/',
+    init:function () {
+    	this.control({
+    		'login-form': {
+    			loginuser: this.onLoginUser
+    		},
+    		'todos-grid #addTodo':{
+                click: this.onAddTodo
             },
-            'todosgrid #addTodo': {
-                click: this.addTodo
+            'todos-grid #listUndone':{
+                click: this.onlistUndone
             },
-            'todosgrid #listUndone': {
-                click: this.listUndone
+            'todos-grid #listDone':{
+                click: this.onlistDone
             },
-            'todosgrid #listDone': {
-                click: this.listDone
+            'todos-grid #listAll':{
+    			click: this.onlistAll
+    		},
+    		'todos-grid': {
+                edit:this.onEditTodo,
+                changetodostatus:this.onChangeTodoStatus,
+                deletetodo:this.onDeleteTodo
             },
-            'todosgrid #listAll': {
-                click: this.listAllTodos
+            'app-main #logOut':{
+                click: this.onLogOut
             },
-            'todosgrid': {
-                edit: this.saveTodo,
-                changetodostatus: this.changeTodoStatus,
-                eliminartodo: this.deleteTodo
-            }
-        });
+            'app-main panel':{
+                activate:this.loadTodosStore
+            }		
+    	});
+        
     },
-    onLoginUser: function (token) {
-        var me = this;
-        TOKEN = token;
-        me.getMain().layout.setActiveItem(1);
-        me.getStore('Todos').load();
+    loadTodosStore:function () {
+        this.getStore('Todos').load();
+        this.getStore('Todos').filter('done',false);
     },
-    addTodo: function (b) {
-        var editor = b.up('todosgrid').editor;
-        editor.cancelEdit();
-
-        // Create a model instance
-        var todo = Ext.create('Todos.model.Todo', {
-            description: '',
+    onLaunch:function (argument) {
+        if(localStorage.getItem("auth_token")){ //si existe el token
+            this.getMain().layout.setActiveItem(1);
+        }
+    },
+    onChangeTodoStatus:function (grid,record,checked) {
+        console.log(arguments);
+        this.saveData(record,checked,'api/add_todo.json',this.saveResponse, false);
+    },
+    onlistDone: function () {
+        this.getStore('Todos').clearFilter(true);
+        this.getStore('Todos').filter('done',true);
+    },
+    onlistAll:function () {
+        this.getStore('Todos').clearFilter();
+    },
+    onlistUndone: function(btn) {
+        this.getStore('Todos').clearFilter(true);
+        this.getStore('Todos').filter('done',false);
+    },
+    onEditTodo:function(editor, e) {
+    	var record = e.record;
+    	this.saveData(record,true,'api/add_todo.json',this.saveResponse, false);
+	},
+    saveResponse:function (c, action, algo, record, checked, deleteAction) {
+        if(action.response.success === true){
+            if(!deleteAction){
+                record.set('id',action.response.todo.id);
+                record.commit();
+            }else{
+                this.getStore('Todos').remove(record);
+            }            
+            this.getStore('Todos').clearFilter(true);
+            this.getStore('Todos').filter('done',!checked);
+        }
+        else{
+            Ext.Msg.alert('Failed', action.response.message);
+        }
+    },
+    onLoginUser:function (token) {
+        localStorage.setItem("auth_token", token);
+    	var me = this;
+    	me.getMain().items.getAt(0).getEl().switchOff();
+    	setTimeout(function () {
+    		me.getMain().layout.setActiveItem(1);    		
+    	},500);
+    	
+    },
+    onAddTodo: function (button) {
+    	var editor = button.up('todos-grid').editor,
+    		todo;
+        editor.cancelEdit();    	
+    	todo = Ext.create('Todos.model.Todo',{
+    		description: '',
             deadline: Ext.Date.clearTime(new Date()),
             done: false
-        });
-        this.getStore('Todos').insert(0, todo);
-        editor.startEdit(0, 0);
+    	});
+    	this.getStore('Todos').insert(0,todo);
+
+    	editor.startEdit(0,0);
     },
-    listUndone: function () {
-    	// Clear the filter collection without updating the UI
-    	this.getStore('Todos').clearFilter(true);
-    	this.getStore('Todos').filter('done', false);
-    	this.listTodosUndones = true;
+    onDeleteTodo: function(grid, record) {
+        this.saveData(record,!record.get('done'),'api/delete_todo.json',this.saveResponse,true);
     },
-    listDone: function () {
-    	this.getStore('Todos').clearFilter(true);
-    	this.getStore('Todos').filter('done', true);
-    	this.listTodosUndones = false;
-    },
-    listAllTodos: function () {
-    	this.getStore('Todos').clearFilter();
-    },
-    saveTodo:function (editor, e) {
-    	this.saveData(e.record)
-    },
-    changeTodoStatus:function (grid, record) {
-    	this.saveData(record);
-    },
-    saveData: function (record) {
-    	var me = this;      
-        Ext.data.JsonP.request({
-            url: URL + 'api/add_todo.json',
-            params: Ext.apply({auth_token:TOKEN},record.getData()),
-            callback: function (c, action) {
-                if (action.response.success === true) {
-                	// commit the changes right after editing finished 
-                	record.set('id',action.response.todo.id);
-                	record.commit();
-                	me.getStore('Todos').clearFilter(true);
-                	me.getStore('Todos').filter('done', !me.listTodosUndones);
-                } 
-                else {
-                    Ext.Msg.alert('Failed', action.response.message);
-                }
-            }
-        });
-    },
-    deleteTodo:function (record) {
-    	var me = this;
+    saveData: function (record, checked, url, callback, deleteAction) {
+        var me = this;
+        console.log(arguments);
     	Ext.data.JsonP.request({
-            url: URL + 'api/delete_todo.json',
-            params: Ext.apply({auth_token:TOKEN},record.getData()),
-            callback: function (c, action) {
-                if (action.response.success === true) {
-                	me.getStore('Todos').remove(record);
-                } 
-                else {
-                    Ext.Msg.alert('Failed', action.response.message);
-                }
-            }
-        });
+    		url: Utils.Utils.url+url,
+    		params: Ext.apply({auth_token:localStorage.getItem('auth_token')},record.getData()),
+    		callback: Ext.Function.bind(callback,me,[record, checked, deleteAction],true)
+    	});
+    },
+    onLogOut:function () {
+        var me = this;
+        localStorage.removeItem('auth_token');     
+        me.getMain().items.getAt(1).el.switchOff();
+        setTimeout(function () {
+            me.getMain().layout.setActiveItem(0);      
+        },500);
     }
 });

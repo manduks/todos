@@ -1,54 +1,69 @@
 /**
- * @class Todos.model.Todo
+ * @class Todos.view.todos.TodosGrid
  * @extends Ext.grid.Panel
- * Este es el grid que mostrará los todos
+ * Grid para listar las tareas
  */
-
 Ext.define('Todos.view.todos.TodosGrid', {
     extend: 'Ext.grid.Panel',
-    requires: [
+    alias: 'widget.todos-grid',
+
+    requires:[
         'Ext.grid.column.Action',
         'Ext.grid.column.CheckColumn',
         'Ext.grid.plugin.RowEditing',
         'Ext.form.field.Checkbox',
         'Ext.form.field.Date'
     ],
-    // xtype: 'todosgrid',
-    alias: 'widget.todosgrid',
+
     title:'Tareas',
+
     store: 'Todos',
-    stateful: true,
+    
     viewConfig: {
         stripeRows: true,
         enableTextSelection: true
     },
-    tbar: [{
+
+     tbar: [{
             text: 'Agregar Tarea',
+            scale:'medium',
+            glyph:'160',
+            iconCls:'icon-plus-1',
             itemId:'addTodo'
         },'->',{
             text: 'Pendientes',
+            scale:'medium',
+            glyph:'160',
+            iconCls:'icon-eye',
             itemId:'listUndone'
         },{
             text: 'Terminados',
+            scale:'medium',
+            glyph:'160',
+            iconCls:'icon-ok',
             itemId:'listDone'
         },{
             text: 'Ver todos',
+            scale:'medium',
+            glyph:'160',
+            iconCls:'icon-list',
             itemId:'listAll'
-        }],
-    initComponent: function () {
-        var me = this;
-        me.columns = me.buildColumns();
-        me.editor = Ext.create('Ext.grid.plugin.RowEditing', {
+    }],
+
+    initComponent: function (argument) {
+    	var me = this;
+    	me.columns =  me.buildColumns();
+    	me.editor =  Ext.create('Ext.grid.plugin.RowEditing', {
             clicksToMoveEditor: 1,
             autoCancel: false
         });
         //editing
         me.plugins = [me.editor];
-        
-        me.callParent();
+
+    	me.callParent();
     },
-    buildColumns: function (argument) {
-        var me = this;
+    buildColumns: function () {
+    	var me = this;
         return [
             {
                 xtype: 'checkcolumn',
@@ -61,7 +76,7 @@ Ext.define('Todos.view.todos.TodosGrid', {
                 },
                 listeners: {
                     checkchange: function(column, rowIndex, checked){
-                         me.fireEvent('changetodostatus',me, me.getStore().getAt(rowIndex));
+                        me.fireEvent('changetodostatus',me, me.getStore().getAt(rowIndex),checked);
                     }
                 }
             },{
@@ -79,7 +94,7 @@ Ext.define('Todos.view.todos.TodosGrid', {
                 sortable : true,
                 renderer : Ext.util.Format.dateRenderer('m/d/Y'),
                 dataIndex: 'deadline',
-                 editor: {
+                editor: {
                     xtype: 'datefield',
                     format: 'm/d/Y',
                     minValue: Ext.Date.format(new Date(), 'm/d/Y')
@@ -97,7 +112,7 @@ Ext.define('Todos.view.todos.TodosGrid', {
                         var record = grid.getStore().getAt(rowIndex);
                          Ext.MessageBox.confirm('Confirm', '¿Estas seguro que quieres borrar esta tarea?', function (btn) {
                              if(btn === 'yes'){
-                                me.fireEvent('eliminartodo', record);
+                                me.fireEvent('deletetodo', grid, record);
                              }
                          });
                     }

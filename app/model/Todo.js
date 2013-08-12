@@ -3,6 +3,7 @@
  * @extends Ext.data.Model
  * Este es el modelo de nuestros todos
  */
+
 Ext.define('Todos.model.Todo', {
     extend: 'Ext.data.Model',
     fields: [{
@@ -20,7 +21,7 @@ Ext.define('Todos.model.Todo', {
     }],
     proxy: {
         type: 'jsonp',
-        url: URL + 'api/list_todos.json',
+        url: Utils.Utils.url + 'api/list_todos.json',
         reader: {
             type: 'json',
             root: 'todos'
